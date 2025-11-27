@@ -22,7 +22,8 @@ import {
     ShieldAlert,
     XCircle,
     ChevronRight,
-    Briefcase
+    Briefcase,
+    Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -32,6 +33,28 @@ interface Props {
 }
 
 type MenuId = 'dashboard' | 'users' | 'drilling_entry' | 'drilling_points' | 'checkman' | 'inventory';
+
+interface DrillingReportItem {
+    id: string;
+    swath: string;
+    pointCode: string;
+    pointType: string;
+    groupType: string;
+    groupName: string;
+    contractorName: string;
+    companyName: string;
+    supervisor: string;
+    foreman: string;
+    mechanic: string;
+    holeType: string;
+    depth1: string;
+    depth2: string;
+    date: string;
+    comments: string;
+    editedBy?: string;
+    approvedBy?: string;
+    status: 'PENDING' | 'APPROVED';
+}
 
 export const CompanyPanel: React.FC<Props> = ({ currentUser, selectedProjectId }) => {
   const navigate = useNavigate();
@@ -75,7 +98,10 @@ export const CompanyPanel: React.FC<Props> = ({ currentUser, selectedProjectId }
       assignedProjectIds: [] as string[]
   });
 
-  // Drilling Data Form
+  // Drilling Data State
+  const [drillingReports, setDrillingReports] = useState<DrillingReportItem[]>([]);
+  const [editingReportId, setEditingReportId] = useState<string | null>(null);
+
   const [drillingForm, setDrillingForm] = useState({
     swath: '',
     pointCode: '',
@@ -159,27 +185,31 @@ export const CompanyPanel: React.FC<Props> = ({ currentUser, selectedProjectId }
         return;
     }
 
-    let reportSummary = `Daily Drilling Report\n`;
-    reportSummary += `Date: ${drillingForm.date}\n`;
-    reportSummary += `Point: ${drillingForm.pointCode} (${drillingForm.swath})\n`;
-    reportSummary += `Type: ${drillingForm.pointType}\n`;
-    
-    if (drillingForm.groupType === 'Company') {
-        reportSummary += `Group Type: Company\n`;
-        reportSummary += `Company Name: ${company?.name || 'N/A'}\n`;
-        reportSummary += `Company Group Name: ${drillingForm.groupName}\n`;
-    } else {
-        reportSummary += `Group Type: Contractor\n`;
-        reportSummary += `Contractor Name: ${drillingForm.contractorName}\n`;
-        reportSummary += `Contractor Group Name: ${drillingForm.groupName}\n`;
-    }
-    
-    reportSummary += `Crew: ${drillingForm.supervisor} (Sup), ${drillingForm.foreman} (Fore), ${drillingForm.mechanic} (Mech)\n`;
-    reportSummary += `Hole: ${drillingForm.holeType}\n`;
-    reportSummary += `Depth: ${drillingForm.depth1}m${drillingForm.holeType === 'Pattern' ? ` / ${drillingForm.depth2}m` : ''}`;
-    
-    alert(reportSummary);
+    const reportData = {
+        ...drillingForm,
+        companyName: company?.name || '',
+        contractorName: drillingForm.groupType === 'Company' ? '' : drillingForm.contractorName,
+        groupName: drillingForm.groupName || (drillingForm.groupType === 'Contractor' ? '-' : '')
+    };
 
+    if (editingReportId) {
+        setDrillingReports(drillingReports.map(r => r.id === editingReportId ? {
+            ...r,
+            ...reportData,
+            editedBy: currentUser.fullName
+        } : r));
+        setEditingReportId(null);
+    } else {
+        const newReport: DrillingReportItem = {
+            id: Math.random().toString(36).substr(2, 9),
+            ...reportData,
+            status: 'PENDING',
+            editedBy: currentUser.fullName
+        };
+        setDrillingReports([...drillingReports, newReport]);
+    }
+
+    // Reset Form
     setDrillingForm({
         swath: '',
         pointCode: '',
@@ -196,6 +226,80 @@ export const CompanyPanel: React.FC<Props> = ({ currentUser, selectedProjectId }
         date: new Date().toISOString().split('T')[0],
         comments: ''
     });
+  };
+
+  const handleEditReport = (report: DrillingReportItem) => {
+      setDrillingForm({
+        swath: report.swath,
+        pointCode: report.pointCode,
+        pointType: report.pointType,
+        groupType: report.groupType,
+        groupName: report.groupName,
+        contractorName: report.contractorName,
+        supervisor: report.supervisor,
+        foreman: report.foreman,
+        mechanic: report.mechanic,
+        holeType: report.holeType,
+        depth1: report.depth1,
+        depth2: report.depth2,
+        date: report.date,
+        comments: report.comments
+      });
+      setEditingReportId(report.id);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteReport = (id: string) => {
+      if(confirm("Are you sure you want to delete this report?")) {
+          setDrillingReports(drillingReports.filter(r => r.id !== id));
+          if (editingReportId === id) {
+              setEditingReportId(null);
+              setDrillingForm({
+                swath: '',
+                pointCode: '',
+                pointType: 'New Point',
+                groupType: 'Company',
+                groupName: '',
+                contractorName: '',
+                supervisor: '',
+                foreman: '',
+                mechanic: '',
+                holeType: 'Single',
+                depth1: '',
+                depth2: '',
+                date: new Date().toISOString().split('T')[0],
+                comments: ''
+              });
+          }
+      }
+  };
+
+  const handleApproveReport = (id: string) => {
+      setDrillingReports(drillingReports.map(r => r.id === id ? {
+          ...r,
+          status: 'APPROVED',
+          approvedBy: currentUser.fullName
+      } : r));
+  };
+
+  const handleCancelEdit = () => {
+      setEditingReportId(null);
+      setDrillingForm({
+        swath: '',
+        pointCode: '',
+        pointType: 'New Point',
+        groupType: 'Company',
+        groupName: '',
+        contractorName: '',
+        supervisor: '',
+        foreman: '',
+        mechanic: '',
+        holeType: 'Single',
+        depth1: '',
+        depth2: '',
+        date: new Date().toISOString().split('T')[0],
+        comments: ''
+      });
   };
 
   const openStaffApproval = (user: User) => {
@@ -605,9 +709,15 @@ export const CompanyPanel: React.FC<Props> = ({ currentUser, selectedProjectId }
 
                 {/* --- DRILLING ENTRY VIEW --- */}
                 {activeView === 'drilling_entry' && (
-                    <div className="max-w-3xl mx-auto space-y-6">
-                        <h2 className="text-2xl font-bold text-slate-800">Daily Drilling Report</h2>
-                        <Card title="Enter Drilling Data">
+                    <div className="max-w-4xl mx-auto space-y-6">
+                        <div className="flex justify-between items-center">
+                             <h2 className="text-2xl font-bold text-slate-800">Daily Drilling Report</h2>
+                             {editingReportId && (
+                                 <Button variant="danger" size="sm" onClick={handleCancelEdit}>Cancel Edit</Button>
+                             )}
+                        </div>
+
+                        <Card title={editingReportId ? "Edit Report Entry" : "New Report Entry"}>
                             <form onSubmit={submitDrillingData} className="space-y-6">
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -770,9 +880,71 @@ export const CompanyPanel: React.FC<Props> = ({ currentUser, selectedProjectId }
                                 </div>
 
                                 <div className="flex justify-end pt-4">
-                                    <Button type="submit" size="lg">Submit Report</Button>
+                                    <Button type="submit" size="lg">{editingReportId ? 'Update Report' : 'Submit Report'}</Button>
                                 </div>
                             </form>
+                        </Card>
+
+                        <Card title="Drilling Points List" className="mt-8">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm text-slate-600 border-collapse">
+                                    <thead className="bg-slate-50 text-slate-900 font-semibold border-b">
+                                        <tr>
+                                            <th className="p-3 border-r">#</th>
+                                            <th className="p-3 border-r min-w-[80px]">Date</th>
+                                            <th className="p-3 border-r">Point</th>
+                                            <th className="p-3 border-r">Swath</th>
+                                            <th className="p-3 border-r">Type</th>
+                                            <th className="p-3 border-r">Group</th>
+                                            <th className="p-3 border-r">Crew</th>
+                                            <th className="p-3 border-r">Hole Info</th>
+                                            <th className="p-3 border-r min-w-[150px]">Comments</th>
+                                            <th className="p-3 border-r">Edited By</th>
+                                            <th className="p-3 border-r">Approved By</th>
+                                            <th className="p-3 text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {drillingReports.map((report, index) => (
+                                            <tr key={report.id} className="border-b hover:bg-slate-50">
+                                                <td className="p-3 border-r">{index + 1}</td>
+                                                <td className="p-3 border-r">{report.date}</td>
+                                                <td className="p-3 border-r font-bold">{report.pointCode}</td>
+                                                <td className="p-3 border-r">{report.swath}</td>
+                                                <td className="p-3 border-r text-xs">{report.pointType}</td>
+                                                <td className="p-3 border-r text-xs">
+                                                    <div className="font-bold">{report.groupType}</div>
+                                                    {report.groupType === 'Contractor' && <div className="text-slate-500">{report.contractorName}</div>}
+                                                    <div className="italic">{report.groupName}</div>
+                                                </td>
+                                                <td className="p-3 border-r text-xs">
+                                                    <div>S: {report.supervisor}</div>
+                                                    <div>F: {report.foreman}</div>
+                                                    <div>M: {report.mechanic}</div>
+                                                </td>
+                                                <td className="p-3 border-r text-xs">
+                                                    <div className="font-bold">{report.holeType}</div>
+                                                    <div>D1: {report.depth1}m</div>
+                                                    {report.holeType === 'Pattern' && <div>D2: {report.depth2}m</div>}
+                                                </td>
+                                                <td className="p-3 border-r text-xs">{report.comments}</td>
+                                                <td className="p-3 border-r text-xs font-mono">{report.editedBy || '-'}</td>
+                                                <td className="p-3 border-r text-xs font-mono text-green-700 font-bold">{report.approvedBy || '-'}</td>
+                                                <td className="p-3 flex items-center justify-center gap-2">
+                                                    <button onClick={() => handleDeleteReport(report.id)} className="text-red-500 hover:text-red-700" title="Delete"><Trash2 size={16}/></button>
+                                                    <button onClick={() => handleEditReport(report)} className="text-blue-500 hover:text-blue-700" title="Edit"><Edit size={16}/></button>
+                                                    <button onClick={() => handleApproveReport(report.id)} className={`hover:text-green-700 ${report.status === 'APPROVED' ? 'text-green-600' : 'text-slate-300 hover:text-green-500'}`} title="Approve" disabled={report.status === 'APPROVED'}>
+                                                        <CheckCircle size={16} fill={report.status === 'APPROVED' ? 'currentColor' : 'none'}/>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {drillingReports.length === 0 && (
+                                            <tr><td colSpan={12} className="p-6 text-center text-slate-400">No records added yet.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </Card>
                     </div>
                 )}

@@ -81,7 +81,7 @@ export const CompanyPanel: React.FC<Props> = ({ currentUser, selectedProjectId }
     pointCode: '',
     pointType: 'New Point', // 'New Point' | 'Re-drill'
     groupType: 'Company', // 'Company' | 'Contractor'
-    groupName: '',
+    groupName: '', // Holds 'Company Group Name' or 'Contractor Group Name'
     contractorName: '',
     supervisor: '',
     foreman: '',
@@ -163,7 +163,17 @@ export const CompanyPanel: React.FC<Props> = ({ currentUser, selectedProjectId }
     reportSummary += `Date: ${drillingForm.date}\n`;
     reportSummary += `Point: ${drillingForm.pointCode} (${drillingForm.swath})\n`;
     reportSummary += `Type: ${drillingForm.pointType}\n`;
-    reportSummary += `Group: ${drillingForm.groupType === 'Company' ? drillingForm.groupName : drillingForm.contractorName} (${drillingForm.groupType})\n`;
+    
+    if (drillingForm.groupType === 'Company') {
+        reportSummary += `Group Type: Company\n`;
+        reportSummary += `Company Name: ${company?.name || 'N/A'}\n`;
+        reportSummary += `Company Group Name: ${drillingForm.groupName}\n`;
+    } else {
+        reportSummary += `Group Type: Contractor\n`;
+        reportSummary += `Contractor Name: ${drillingForm.contractorName}\n`;
+        reportSummary += `Contractor Group Name: ${drillingForm.groupName}\n`;
+    }
+    
     reportSummary += `Crew: ${drillingForm.supervisor} (Sup), ${drillingForm.foreman} (Fore), ${drillingForm.mechanic} (Mech)\n`;
     reportSummary += `Hole: ${drillingForm.holeType}\n`;
     reportSummary += `Depth: ${drillingForm.depth1}m${drillingForm.holeType === 'Pattern' ? ` / ${drillingForm.depth2}m` : ''}`;
@@ -633,7 +643,15 @@ export const CompanyPanel: React.FC<Props> = ({ currentUser, selectedProjectId }
                                         <select 
                                             className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none border-slate-300 bg-white"
                                             value={drillingForm.groupType}
-                                            onChange={e => setDrillingForm({...drillingForm, groupType: e.target.value})}
+                                            onChange={(e) => {
+                                                const newType = e.target.value;
+                                                setDrillingForm(prev => ({
+                                                    ...prev, 
+                                                    groupType: newType,
+                                                    groupName: newType === 'Contractor' ? '-' : '',
+                                                    contractorName: ''
+                                                }));
+                                            }}
                                         >
                                             <option value="Company">Company</option>
                                             <option value="Contractor">Contractor</option>
@@ -641,21 +659,37 @@ export const CompanyPanel: React.FC<Props> = ({ currentUser, selectedProjectId }
                                     </div>
                                 </div>
 
-                                <div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {drillingForm.groupType === 'Company' ? (
-                                        <Input 
-                                            label="Group Name" 
-                                            placeholder="Enter Group Name" 
-                                            value={drillingForm.groupName} 
-                                            onChange={e => setDrillingForm({...drillingForm, groupName: e.target.value})} 
-                                        />
+                                        <>
+                                            <Input 
+                                                label="Company Name" 
+                                                value={company?.name || ''} 
+                                                readOnly
+                                                className="bg-slate-100 text-slate-600 cursor-not-allowed"
+                                            />
+                                            <Input 
+                                                label="Company Group Name" 
+                                                placeholder="Enter Group Name" 
+                                                value={drillingForm.groupName} 
+                                                onChange={e => setDrillingForm({...drillingForm, groupName: e.target.value})} 
+                                            />
+                                        </>
                                     ) : (
-                                        <Input 
-                                            label="Contractor Name" 
-                                            placeholder="Enter Contractor Name" 
-                                            value={drillingForm.contractorName} 
-                                            onChange={e => setDrillingForm({...drillingForm, contractorName: e.target.value})} 
-                                        />
+                                        <>
+                                            <Input 
+                                                label="Contractor Name" 
+                                                placeholder="Enter Contractor Name" 
+                                                value={drillingForm.contractorName} 
+                                                onChange={e => setDrillingForm({...drillingForm, contractorName: e.target.value})} 
+                                            />
+                                            <Input 
+                                                label="Contractor Group Name" 
+                                                placeholder="Enter Group Name" 
+                                                value={drillingForm.groupName} 
+                                                onChange={e => setDrillingForm({...drillingForm, groupName: e.target.value})} 
+                                            />
+                                        </>
                                     )}
                                 </div>
 

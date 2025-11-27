@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { db } from '../services/mockDb';
 import { User, Company, UserRole, UserStatus, CompanyStatus, Project, PERMISSIONS, PROJECT_ROLE_CATEGORIES, PROJECT_JOB_TITLES } from '../types';
@@ -76,14 +77,20 @@ export const CompanyPanel: React.FC<Props> = ({ currentUser, selectedProjectId }
 
   // Drilling Data Form
   const [drillingForm, setDrillingForm] = useState({
-    swat: '',
-    pointNumber: '',
-    crewName: '',
-    depth: '',
-    isContractor: false,
+    swath: '',
+    pointCode: '',
+    pointType: 'New Point', // 'New Point' | 'Re-drill'
+    groupType: 'Company', // 'Company' | 'Contractor'
+    groupName: '',
+    contractorName: '',
     supervisor: '',
+    foreman: '',
     mechanic: '',
-    foreman: ''
+    holeType: 'Single', // 'Single' | 'Pattern'
+    depth1: '',
+    depth2: '',
+    date: new Date().toISOString().split('T')[0],
+    comments: ''
   });
 
   useEffect(() => {
@@ -147,20 +154,37 @@ export const CompanyPanel: React.FC<Props> = ({ currentUser, selectedProjectId }
 
   const submitDrillingData = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!drillingForm.pointNumber || !drillingForm.depth) {
-        alert("Point Number and Depth are required.");
+    if (!drillingForm.pointCode) {
+        alert("Point Code is required.");
         return;
     }
-    alert(`Drilling Data Submitted for Point ${drillingForm.pointNumber}\nDepth: ${drillingForm.depth}m\nCrew: ${drillingForm.crewName}`);
+
+    let reportSummary = `Daily Drilling Report\n`;
+    reportSummary += `Date: ${drillingForm.date}\n`;
+    reportSummary += `Point: ${drillingForm.pointCode} (${drillingForm.swath})\n`;
+    reportSummary += `Type: ${drillingForm.pointType}\n`;
+    reportSummary += `Group: ${drillingForm.groupType === 'Company' ? drillingForm.groupName : drillingForm.contractorName} (${drillingForm.groupType})\n`;
+    reportSummary += `Crew: ${drillingForm.supervisor} (Sup), ${drillingForm.foreman} (Fore), ${drillingForm.mechanic} (Mech)\n`;
+    reportSummary += `Hole: ${drillingForm.holeType}\n`;
+    reportSummary += `Depth: ${drillingForm.depth1}m${drillingForm.holeType === 'Pattern' ? ` / ${drillingForm.depth2}m` : ''}`;
+    
+    alert(reportSummary);
+
     setDrillingForm({
-        swat: '',
-        pointNumber: '',
-        crewName: '',
-        depth: '',
-        isContractor: false,
+        swath: '',
+        pointCode: '',
+        pointType: 'New Point',
+        groupType: 'Company',
+        groupName: '',
+        contractorName: '',
         supervisor: '',
+        foreman: '',
         mechanic: '',
-        foreman: ''
+        holeType: 'Single',
+        depth1: '',
+        depth2: '',
+        date: new Date().toISOString().split('T')[0],
+        comments: ''
     });
   };
 
@@ -578,85 +602,137 @@ export const CompanyPanel: React.FC<Props> = ({ currentUser, selectedProjectId }
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <Input 
-                                        label="Swat / Line" 
-                                        placeholder="e.g. L-105" 
-                                        value={drillingForm.swat} 
-                                        onChange={e => setDrillingForm({...drillingForm, swat: e.target.value})} 
+                                        label="Swath" 
+                                        placeholder="e.g. S-10" 
+                                        value={drillingForm.swath} 
+                                        onChange={e => setDrillingForm({...drillingForm, swath: e.target.value})} 
                                     />
                                     <Input 
-                                        label="Point Number" 
-                                        placeholder="e.g. P-23" 
-                                        value={drillingForm.pointNumber} 
-                                        onChange={e => setDrillingForm({...drillingForm, pointNumber: e.target.value})}
+                                        label="Point Code" 
+                                        placeholder="e.g. P-105" 
+                                        value={drillingForm.pointCode} 
+                                        onChange={e => setDrillingForm({...drillingForm, pointCode: e.target.value})}
                                         required
                                     />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Point Type</label>
+                                        <select 
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none border-slate-300 bg-white"
+                                            value={drillingForm.pointType}
+                                            onChange={e => setDrillingForm({...drillingForm, pointType: e.target.value})}
+                                        >
+                                            <option value="New Point">New Point</option>
+                                            <option value="Re-drill">Re-drill</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Group Type</label>
+                                        <select 
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none border-slate-300 bg-white"
+                                            value={drillingForm.groupType}
+                                            onChange={e => setDrillingForm({...drillingForm, groupType: e.target.value})}
+                                        >
+                                            <option value="Company">Company</option>
+                                            <option value="Contractor">Contractor</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    {drillingForm.groupType === 'Company' ? (
+                                        <Input 
+                                            label="Group Name" 
+                                            placeholder="Enter Group Name" 
+                                            value={drillingForm.groupName} 
+                                            onChange={e => setDrillingForm({...drillingForm, groupName: e.target.value})} 
+                                        />
+                                    ) : (
+                                        <Input 
+                                            label="Contractor Name" 
+                                            placeholder="Enter Contractor Name" 
+                                            value={drillingForm.contractorName} 
+                                            onChange={e => setDrillingForm({...drillingForm, contractorName: e.target.value})} 
+                                        />
+                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <Input 
-                                        label="Drilled Depth (m)" 
-                                        type="number" 
-                                        step="0.1" 
-                                        placeholder="0.0" 
-                                        value={drillingForm.depth} 
-                                        onChange={e => setDrillingForm({...drillingForm, depth: e.target.value})}
-                                        required
+                                        label="Supervisor" 
+                                        placeholder="Name" 
+                                        value={drillingForm.supervisor} 
+                                        onChange={e => setDrillingForm({...drillingForm, supervisor: e.target.value})} 
                                     />
                                     <Input 
-                                        label="Crew Name" 
-                                        placeholder="e.g. Team Alpha" 
-                                        value={drillingForm.crewName} 
-                                        onChange={e => setDrillingForm({...drillingForm, crewName: e.target.value})}
+                                        label="Foreman" 
+                                        placeholder="Name" 
+                                        value={drillingForm.foreman} 
+                                        onChange={e => setDrillingForm({...drillingForm, foreman: e.target.value})} 
                                     />
-                                    <div className="flex flex-col">
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">Contractor?</label>
-                                        <div className="flex gap-4 mt-1">
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input 
-                                                    type="radio" 
-                                                    name="isContractor" 
-                                                    checked={drillingForm.isContractor === true} 
-                                                    onChange={() => setDrillingForm({...drillingForm, isContractor: true})}
-                                                    className="accent-primary"
-                                                />
-                                                <span className="text-sm">Yes</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input 
-                                                    type="radio" 
-                                                    name="isContractor" 
-                                                    checked={drillingForm.isContractor === false} 
-                                                    onChange={() => setDrillingForm({...drillingForm, isContractor: false})}
-                                                    className="accent-primary"
-                                                />
-                                                <span className="text-sm">No</span>
-                                            </label>
-                                        </div>
-                                    </div>
+                                    <Input 
+                                        label="Mechanic" 
+                                        placeholder="Name" 
+                                        value={drillingForm.mechanic} 
+                                        onChange={e => setDrillingForm({...drillingForm, mechanic: e.target.value})} 
+                                    />
                                 </div>
 
-                                <div className="border-t border-slate-100 pt-4">
-                                    <h4 className="font-bold text-sm text-slate-500 mb-4 uppercase">Personnel On Site</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Hole Type</label>
+                                            <select 
+                                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none border-slate-300 bg-white"
+                                                value={drillingForm.holeType}
+                                                onChange={e => setDrillingForm({...drillingForm, holeType: e.target.value})}
+                                            >
+                                                <option value="Single">Single</option>
+                                                <option value="Pattern">Pattern</option>
+                                            </select>
+                                        </div>
                                         <Input 
-                                            label="Supervisor" 
-                                            placeholder="Name" 
-                                            value={drillingForm.supervisor} 
-                                            onChange={e => setDrillingForm({...drillingForm, supervisor: e.target.value})} 
-                                        />
-                                        <Input 
-                                            label="Forman" 
-                                            placeholder="Name" 
-                                            value={drillingForm.foreman} 
-                                            onChange={e => setDrillingForm({...drillingForm, foreman: e.target.value})} 
-                                        />
-                                        <Input 
-                                            label="Mechanic" 
-                                            placeholder="Name" 
-                                            value={drillingForm.mechanic} 
-                                            onChange={e => setDrillingForm({...drillingForm, mechanic: e.target.value})} 
+                                            label="Drilling Date" 
+                                            type="date"
+                                            value={drillingForm.date} 
+                                            onChange={e => setDrillingForm({...drillingForm, date: e.target.value})} 
                                         />
                                     </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <Input 
+                                            label={drillingForm.holeType === 'Pattern' ? "Depth 1 (m)" : "Depth (m)"}
+                                            type="number" 
+                                            step="0.1" 
+                                            placeholder="0.0" 
+                                            value={drillingForm.depth1} 
+                                            onChange={e => setDrillingForm({...drillingForm, depth1: e.target.value})}
+                                            required
+                                        />
+                                        {drillingForm.holeType === 'Pattern' && (
+                                            <Input 
+                                                label="Depth 2 (m)" 
+                                                type="number" 
+                                                step="0.1" 
+                                                placeholder="0.0" 
+                                                value={drillingForm.depth2} 
+                                                onChange={e => setDrillingForm({...drillingForm, depth2: e.target.value})}
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Comments</label>
+                                    <textarea 
+                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none border-slate-300"
+                                        rows={3}
+                                        value={drillingForm.comments}
+                                        onChange={e => setDrillingForm({...drillingForm, comments: e.target.value})}
+                                        placeholder="Additional notes..."
+                                    ></textarea>
                                 </div>
 
                                 <div className="flex justify-end pt-4">
